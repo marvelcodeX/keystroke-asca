@@ -1,33 +1,25 @@
 # keystroke-asca
 
-A careful re-examination of the acoustic keystroke side channel on laptop and external keyboards, inspired by
-[Harrison, Toreini & Mehrnezhad (2023), *A Practical Deep Learning-Based Acoustic Side Channel Attack on Keyboards*](https://arxiv.org/abs/2308.01074).
+An end-to-end ealuated study of acoustic keystroke leakage on two keyboards: a MacBook Air M4 and a Logitech external keyboard, recorded with an ordinary Android phone and classified with deep learning on Apple Silicon.
 
-Goal: train classifiers on keystroke audio from a MacBook Air M4 keyboard and a Logitech keyboard, recorded with an
-Android phone, and measure how well keys can be identified **under evaluation that avoids the paper's leakage problems**.
 
-> **Status:** early. Environment, recording/labelling tool and config are done. Segmentation, features, models and
-> evaluation are next. No results yet.
+## Approach
 
-## Why not just replicate the paper?
-
-| Issue in the paper | What this project does instead |
-|---|---|
-| Random train/test split of presses from the same session (leakage; their own Zoom numbers swing 0.52 to 0.96 on split type) | Split by **recording session** (train on sessions 1-2, test on sealed session 3) |
-| Each key recorded as its own 25-press block (model can learn per-file noise) | **Random interleaved** prompted sequence in one continuous take, plus a **silence-only control** that must score at chance |
-| "Peak validation accuracy" reported, 180-sample test set, single seed | Pick epoch on validation, evaluate test once; 5 seeds; bootstrap confidence intervals |
-| Training collapsed at LR 1e-3 | AdamW, warmup + cosine, gradient clipping, early stopping |
-| Keystroke detector needs the true press count | Detector without an oracle count, scored against logged ground truth |
-| Inconsistent spectrogram parameters | One config file, logged per run |
-| No simple baselines | MFCC + SVM/logistic regression, small CNN, then CoAtNet |
-
-## Method in brief
-
-- **Ground truth:** `src/record_logger.py` prompts a balanced random key sequence and logs every key down/up with
-  timestamps (plus optional Mac-mic recording), so audio is labelled automatically.
-- **Audio:** phone WAV (44.1/48 kHz, no noise suppression) about 15 cm from the keyboard.
+- **Automatic ground truth.** `src/record_logger.py` prompts a balanced, shuffled key sequence and logs every key
+  down/up with timestamps, so every audio clip has an exact label with no hand annotation. It can also record the Mac's
+  own mic as a second, synchronised channel.
+- **Honest evaluation by design.**
+  - Splits are by **recording session** (train on sessions 1-2, test on a sealed session 3), never by random press, so
+    neighbouring presses can't leak across the split.
+  - Keys are recorded in a **random interleaved order** in one continuous take, so a model can't learn per-file noise.
+  - A **silence-only control** must score at chance.
+  - The best epoch is chosen on validation data; the test set is scored once, over 5 seeds, with bootstrap confidence
+    intervals.
+- **Keystroke detection without an oracle.** Onsets are detected from the audio alone and scored against the logged
+  ground truth.
 - **Features:** 64-band mel-spectrograms of a fixed window around each onset (`configs/base.yaml`).
-- **Models:** baselines then CNN / CoAtNet in PyTorch (Apple `mps` backend; Colab optional).
+- **Models:** classic baselines (MFCC + SVM / logistic regression), a small CNN, and CoAtNet, in PyTorch (Apple `mps`
+  backend; Colab optional).
 
 ## Setup (macOS, Apple Silicon)
 
@@ -50,6 +42,9 @@ macOS permissions for the app running your terminal: **Input Monitoring** (key l
 Follow the prompts, then place the phone WAV at `data/raw/<keyboard>/session<N>/phone.wav`. Use `--session 0` for
 throwaway trials. Session 3 is the sealed test set: do not tune on it.
 
+Phone recording settings: WAV/PCM, 44.1 or 48 kHz, noise suppression and auto gain off, phone about 15 cm from the
+keyboard on a folded cloth.
+
 ## Layout
 
 ```
@@ -67,11 +62,11 @@ tool that only records keys you are asked to press, in a terminal you started, a
 Do not use it, or models trained with it, to record other people's typing or to recover passwords or private text.
 Raw audio and key logs are git-ignored and should not be published.
 
-## Citation
-
-Harrison, J., Toreini, E., Mehrnezhad, M. (2023). *A Practical Deep Learning-Based Acoustic Side Channel Attack on
-Keyboards.* arXiv:2308.01074.
-
 ## License
 
 MIT, see [LICENSE](LICENSE).
+
+## Inspiration
+
+Inspired by Harrison, Toreini & Mehrnezhad (2023), [*A Practical Deep Learning-Based Acoustic Side Channel Attack on
+Keyboards*](https://arxiv.org/abs/2308.01074).
