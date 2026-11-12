@@ -1,0 +1,31 @@
+# Single source of truth for all spectrogram/training params. Log this with every run.
+audio:
+  sample_rate: 44100
+  clip_seconds: 0.33        # fixed window around each keystroke onset
+  pre_onset_seconds: 0.05   # context kept before the onset
+features:
+  n_mels: 64
+  n_fft: 1024
+  hop_length: 225           # ONE value everywhere (paper used 500/255/225 inconsistently)
+  fmin: 20
+  fmax: 20000
+augment:                    # TRAIN split only, applied after splitting
+  time_shift_frac: 0.1      # paper used 0.4, which can push the keystroke out of the window
+  specaug_mask_frac: 0.1
+  specaug_masks_per_axis: 2
+split:
+  train_sessions: [1, 2]    # chosen by session, never by random press
+  val_session: null         # carve val out of session 2 by block, or use a dedicated session
+  test_session: 3           # SEALED until final evaluation
+train:
+  optimizer: adamw
+  lr: 5.0e-4
+  weight_decay: 1.0e-2
+  warmup_epochs: 5
+  schedule: cosine
+  grad_clip: 1.0
+  epochs: 200
+  batch_size: 32
+  early_stop_patience: 20
+  seeds: [0, 1, 2, 3, 4]
+labels: "0123456789abcdefghijklmnopqrstuvwxyz"

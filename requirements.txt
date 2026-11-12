@@ -1,0 +1,16 @@
+torch
+torchaudio
+numpy
+scipy
+librosa
+soundfile
+sounddevice
+pynput
+scikit-learn
+pandas
+matplotlib
+seaborn
+pyyaml
+tqdm
+timm
+pytest
